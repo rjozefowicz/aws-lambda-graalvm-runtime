@@ -58,6 +58,16 @@ public class NoOpContext implements Context {
 
     @Override
     public LambdaLogger getLogger() {
-        return null;
+        return new LambdaLogger() {
+            @Override
+            public void log(String s) {
+                System.out.println(s);
+            }
+
+            @Override
+            public void log(byte[] bytes) {
+                System.out.println(new String(bytes));
+            }
+        };
     }
 }
