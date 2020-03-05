@@ -5,7 +5,7 @@ import dev.jozefowicz.lambda.graalvm.runtime.GraalVMRuntime;
 public class FunctionBootstrap {
 
     public static void main(String[] args) {
-        new GraalVMRuntime(new NativePutItemHandler()).execute();
+        new GraalVMRuntime(new NativePutItemHandler(), Measurement.class).execute();
     }
 
 }

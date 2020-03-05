@@ -20,9 +20,11 @@ public class GraalVMRuntime {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final RequestHandler requestHandler;
+    private final Class<?> eventClass;
 
-    public GraalVMRuntime(RequestHandler requestHandler) {
+    public GraalVMRuntime(RequestHandler requestHandler, Class<?> eventClass) {
         this.requestHandler = requestHandler;
+        this.eventClass = eventClass;
     }
 
     public void execute() {
@@ -35,7 +37,7 @@ public class GraalVMRuntime {
                 final HttpRequest newInvocationRequest = HttpRequest.newBuilder().uri(new URI(LAMBDA_NEXT_INVOCATION_ENDPOINT)).timeout(Duration.ofSeconds(2)).build();
                 final HttpResponse<String> invocationRequest = httpClient.send(newInvocationRequest, HttpResponse.BodyHandlers.ofString());
                 var invocationID = invocationRequest.headers().map().get("Lambda-Runtime-Aws-Request-Id").get(0);
-                final Object input = this.objectMapper.readValue(invocationRequest.body(), Object.class);
+                final Object input = this.objectMapper.readValue(invocationRequest.body(), eventClass);
 
                 final Object result = requestHandler.handleRequest(input, new NoOpContext());
 
