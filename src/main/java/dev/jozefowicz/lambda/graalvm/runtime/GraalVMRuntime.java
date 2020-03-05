@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 import java.util.TimeZone;
 
 public class GraalVMRuntime {
@@ -41,25 +42,48 @@ public class GraalVMRuntime {
                 final var startTimestamp = System.currentTimeMillis();
                 final HttpRequest newInvocationRequest = HttpRequest.newBuilder().uri(new URI(LAMBDA_NEXT_INVOCATION_ENDPOINT)).timeout(Duration.ofSeconds(2)).build();
                 final HttpResponse<String> invocationRequest = httpClient.send(newInvocationRequest, HttpResponse.BodyHandlers.ofString());
-                var invocationID = invocationRequest.headers().map().get("Lambda-Runtime-Aws-Request-Id").get(0);
-                final Object input = this.objectMapper.readValue(invocationRequest.body(), eventClass);
-
-                final Object result = requestHandler.handleRequest(input, new NoOpContext());
-
-                final var invocationResultEndpoint = "http://" + AWS_LAMBDA_RUNTIME_API + "/2018-06-01/runtime/invocation/" + invocationID + "/response";
-                final HttpRequest invocationResultRequest = HttpRequest
-                        .newBuilder()
-                        .uri(new URI(invocationResultEndpoint))
-                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(result)))
-                        .build();
-                final HttpResponse<String> invocationResultResponse = httpClient.send(invocationResultRequest, HttpResponse.BodyHandlers.ofString());
-
-                System.out.println("Lambda result endpoint response: " + invocationResultResponse.body());
+                String result = invokeHandler(invocationRequest);
+                System.out.println("Lambda result endpoint response: " + result);
                 System.out.println("Execution time: " + (System.currentTimeMillis() - startTimestamp));
             } catch (Exception e) {
                 System.out.println(String.format("Exception while executing handler logic: %s", e.getLocalizedMessage()));
                 e.printStackTrace();
             }
+        }
+    }
+
+    private String invokeHandler(HttpResponse<String> invocationRequest) throws Exception {
+        var invocationID = invocationRequest.headers().map().get("Lambda-Runtime-Aws-Request-Id").get(0);
+        try {
+            final Object input = this.objectMapper.readValue(invocationRequest.body(), eventClass);
+            final Object result = requestHandler.handleRequest(input, new NoOpContext());
+            final var invocationResultEndpoint = "http://" + AWS_LAMBDA_RUNTIME_API + "/2018-06-01/runtime/invocation/" + invocationID + "/response";
+            final HttpRequest invocationResultRequest = HttpRequest
+                    .newBuilder()
+                    .uri(new URI(invocationResultEndpoint))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(result)))
+                    .build();
+            return httpClient.send(invocationResultRequest, HttpResponse.BodyHandlers.ofString()).body();
+        } catch (Exception e) {
+            postError(invocationID, e.getLocalizedMessage());
+            System.out.println(String.format("Exception while executing handler logic: %s", e.getLocalizedMessage()));
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    private void postError(final String invocationID, String message) {
+        try {
+            final var invocationResultEndpoint = "http://" + AWS_LAMBDA_RUNTIME_API + "/2018-06-01/runtime/invocation/" + invocationID + "/response";
+            final HttpRequest invocationResultRequest = HttpRequest
+                    .newBuilder()
+                    .uri(new URI(invocationResultEndpoint))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("errorMessage", message))))
+                    .build();
+            final HttpResponse<String> invocationResultResponse = httpClient.send(invocationResultRequest, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            System.out.println(String.format("Unable to post invocation error %s", e.getLocalizedMessage()));
+            throw new RuntimeException("Runtime execution exception");
         }
     }
 

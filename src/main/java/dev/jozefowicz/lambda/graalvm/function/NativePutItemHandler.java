@@ -25,7 +25,7 @@ public class NativePutItemHandler implements RequestHandler<Measurement, Void> {
         } else {
             final Map<String, AttributeValue> persistedMeasurement = Map.of(
                     "uuid", AttributeValue.builder().s(UUID.randomUUID().toString()).build(),
-                    "serialNumber", AttributeValue.builder().n(measurement.getSerialNumber()).build(),
+                    "serialNumber", AttributeValue.builder().s(measurement.getSerialNumber()).build(),
                     "temp", AttributeValue.builder().n(Double.toString(measurement.getTemp())).build()
             );
             client.putItem(
