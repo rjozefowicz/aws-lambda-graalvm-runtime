@@ -10,7 +10,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -40,7 +39,7 @@ public class GraalVMRuntime {
         while (true) {
             try {
                 final var startTimestamp = System.currentTimeMillis();
-                final HttpRequest newInvocationRequest = HttpRequest.newBuilder().uri(new URI(LAMBDA_NEXT_INVOCATION_ENDPOINT)).timeout(Duration.ofSeconds(2)).build();
+                final HttpRequest newInvocationRequest = HttpRequest.newBuilder().uri(new URI(LAMBDA_NEXT_INVOCATION_ENDPOINT)).build();
                 final HttpResponse<String> invocationRequest = httpClient.send(newInvocationRequest, HttpResponse.BodyHandlers.ofString());
                 String result = invokeHandler(invocationRequest);
                 System.out.println("Lambda result endpoint response: " + result);
